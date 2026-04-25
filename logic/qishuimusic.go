@@ -107,7 +107,7 @@ func parseQsSongList(body io.Reader, detailed bool) (*models.SongList, error) {
 				songName = utils.StandardSongName(title) // 使用标准化的歌曲名
 			}
 
-			// 按照网易云音乐的格式化方式: "歌曲名 - 歌手"
+			// 使用通用格式: "歌曲名 - 歌手"
 			formattedSong := fmt.Sprintf("%s - %s", songName, artist)
 			songList.Songs = append(songList.Songs, formattedSong)
 			songList.SongsCount++

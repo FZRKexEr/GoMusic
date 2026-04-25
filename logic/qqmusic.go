@@ -20,14 +20,13 @@ import (
 // QQ音乐相关常量
 const (
 	// API相关
-	qqMusicRedis  = "qq_music:%d"
 	qqMusicAPIURL = "https://u6.y.qq.com/cgi-bin/musics.fcg?sign=%s&_=%d"
 
 	// 错误响应长度标识
 	qqMusicErrorResponseLength = 108
 
 	// 分页相关
-	maxSongsPerPage = 30  // 每页最大歌曲数
+	maxSongsPerPage = 30    // 每页最大歌曲数
 	maxTotalSongs   = 10000 // 最大支持的歌曲总数
 )
 

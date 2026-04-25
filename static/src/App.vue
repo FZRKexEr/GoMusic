@@ -132,13 +132,6 @@
                 </li>
                 <li>{{ state.isEnglish ? i18n.guideFourth.en : i18n.guideFourth.zh }}</li>
               </ol>
-              <blockquote>
-                {{
-                  state.isEnglish ? i18n.tipBetweenNetEaseAndQQ.en : i18n.tipBetweenNetEaseAndQQ.zh
-                }}
-                {{ state.isEnglish ? i18n.see.en : i18n.see.zh }}<a
-                  href="https://github.com/Bistutu/GoMusic/issues/17" target="_blank">GitHub issue</a>
-              </blockquote>
             </el-collapse-item>
 
             <el-collapse-item :title=" state.isEnglish ? i18n.sponsor.en : i18n.sponsor.zh " name="second">
@@ -183,16 +176,16 @@ const state = reactive({
 
 const i18n = {
   title_first: {
-    en: 'Migrate Netease/Qishui/QQ Music Playlist',
-    zh: '迁移网易云/汽水/QQ音乐歌单',
+    en: 'Migrate Qishui/QQ Music Playlist',
+    zh: '迁移汽水/QQ音乐歌单',
   },
   title_second: {
     en: 'To Apple/Youtube/Spotify Music',
     zh: '至 Apple/Youtube/Spotify Music',
   },
   inputPlaceholder: {
-    en: 'Enter any playlist link, such as: http://163cn.tv/zoIxm3',
-    zh: '输入任意歌单链接，如：http://163cn.tv/zoIxm3',
+    en: 'Enter any playlist link, such as: https://y.qq.com/n/ryqq/playlist/7364061065',
+    zh: '输入任意歌单链接，如：https://y.qq.com/n/ryqq/playlist/7364061065',
   },
   fetchSongList: {
     en: 'Fetch Song List',
@@ -211,8 +204,8 @@ const i18n = {
     zh: '《使用指南》',
   },
   guideFirst: {
-    en: 'Enter playlist link, such as: http://163cn.tv/zoIxm3',
-    zh: '输入歌单链接，如：http://163cn.tv/zoIxm3',
+    en: 'Enter playlist link, such as: https://y.qq.com/n/ryqq/playlist/7364061065',
+    zh: '输入歌单链接，如：https://y.qq.com/n/ryqq/playlist/7364061065',
   },
   guideSecond: {
     en: 'Copy the query result',
@@ -233,14 +226,6 @@ const i18n = {
   guideFourth: {
     en: 'Select playlist source as "Any Text", paste the copied playlist, select Apple/Youtube/Spotify Music as destination, confirm migration',
     zh: '选择歌单来源"任意文本"，将刚刚复制的歌单文本粘贴进去，选择 Apple/Youtube/Spotify Music 作为目的地，确认迁移',
-  },
-  tipBetweenNetEaseAndQQ: {
-    en: 'How to migrate to NetEase Cloud Music/QQ Music',
-    zh: '想在网易云/QQ音乐之间实现歌单互转？',
-  },
-  see: {
-    en: 'See: ',
-    zh: '见：',
   },
   about: {
     en: 'About author',
@@ -346,7 +331,7 @@ const fetchLinkDetails = async () => {
   state.link = state.link.trim();
 
   if (!isValidUrl(state.link) || !isSupportedPlatform(state.link)) {
-    reset(state.isEnglish ? 'Invalid link, only support Netease, QQ Music and Qishui Music' : '链接无效，平台仅支持网易云音乐、QQ音乐和汽水音乐');
+    reset(state.isEnglish ? 'Invalid link, only support QQ Music and Qishui Music' : '链接无效，平台仅支持QQ音乐和汽水音乐');
     return;
   }
 
