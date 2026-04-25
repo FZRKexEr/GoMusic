@@ -1,11 +1,8 @@
 package httputil
 
 import (
-	"io"
+	"log/slog"
 	"net/http"
-
-	"GoMusic/misc/log"
-	"GoMusic/misc/models"
 )
 
 // not allow redirect client
@@ -23,32 +20,35 @@ func init() {
 	}
 }
 
-// Post ...
-func Post(link string, data io.Reader) (*http.Response, error) {
-	req, err := http.NewRequest(models.POST, link, data)
+// GetRedirectLocation ...
+func GetRedirectLocation(link string) (string, error) {
+	req, err := newGetRequest(link)
 	if err != nil {
-		log.Errorf("http NewRequest error: %+v", err)
+		return "", err
+	}
+	rsp, err := clientNoRedirect.Do(req)
+	if err != nil {
+		slog.Error("http Get error", "err", err)
+		return "", err
+	}
+	defer rsp.Body.Close()
+	return rsp.Header.Get("Location"), nil
+}
+
+func Get(link string) (*http.Response, error) {
+	req, err := newGetRequest(link)
+	if err != nil {
 		return nil, err
 	}
-	req.Header.Add(models.ContentType, "application/x-www-form-urlencoded")
 	return client.Do(req)
 }
 
-// GetRedirectLocation ...
-func GetRedirectLocation(link string) (string, error) {
-	rsp, err := clientNoRedirect.Get(link)
+func newGetRequest(link string) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodGet, link, nil)
 	if err != nil {
-		log.Errorf("http Get error: %+v", err)
-		return "", err
-	}
-	return rsp.Header.Get("Location"), nil
-}
-func Get(link string, data io.Reader) (*http.Response, error) {
-	req, err := http.NewRequest("GET", link, data)
-	if err != nil {
-		log.Errorf("http NewRequest error: %+v", err)
+		slog.Error("http NewRequest error", "err", err)
 		return nil, err
 	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	return client.Do(req)
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	return req, nil
 }

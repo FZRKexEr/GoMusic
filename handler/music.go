@@ -2,12 +2,12 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"strings"
 	"sync/atomic"
 
 	"GoMusic/logic"
-	"GoMusic/misc/log"
 	"GoMusic/misc/models"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -15,67 +15,40 @@ import (
 )
 
 const (
-	qqMusic     = `.qq.`
 	qishuiMusic = `(qishui)|(douyin)`
 	SUCCESS     = "success"
 )
 
 var (
-	qqMusicRegx, _     = regexp.Compile(qqMusic)
 	qishuiMusicRegx, _ = regexp.Compile(qishuiMusic)
 	counter            atomic.Int64 // request counter
 )
 
 // MusicHandler 处理音乐请求的入口函数
-func MusicHandler(ctx context.Context, c *app.RequestContext) {
+func MusicHandler(_ context.Context, c *app.RequestContext) {
 	link := c.PostForm("url")
 	detailed := c.Query("detailed") == "true"
 	format := c.Query("format")
 	order := c.Query("order")
 	currentCount := counter.Add(1)
 
-	log.Infof("第 %v 次歌单请求：%v，详细歌曲名：%v，歌曲格式：%v，歌曲顺序：%v", currentCount, link, detailed, format, order)
+	slog.Info("歌单请求", "count", currentCount, "link", link, "detailed", detailed, "format", format, "order", order)
 
 	// 路由到不同的音乐服务处理函数
 	switch {
-	case qqMusicRegx.MatchString(link):
-		handleQQMusic(c, link, detailed, format, order)
 	case qishuiMusicRegx.MatchString(link):
 		handleQiShuiMusic(c, link, detailed, format, order)
 	default:
-		log.Warnf("不支持的音乐链接格式: %s", link)
+		slog.Warn("不支持的音乐链接格式", "link", link)
 		c.JSON(consts.StatusBadRequest, &models.Result{Code: models.FailureCode, Msg: "不支持的音乐链接格式", Data: nil})
 	}
-}
-
-// handleQQMusic 处理QQ音乐歌单
-func handleQQMusic(c *app.RequestContext, link string, detailed bool, format, order string) {
-	if link == "https://i.y.qq.com/v8/playsong.html" {
-		c.JSON(consts.StatusBadRequest, &models.Result{Code: models.FailureCode, Msg: "无效歌单链接，请检查是否正确", Data: nil})
-		return
-	}
-
-	songList, err := logic.QQMusicDiscover(link, detailed)
-	if err != nil {
-		log.Errorf("获取歌单失败: %v", err)
-		c.JSON(consts.StatusBadRequest, &models.Result{Code: models.FailureCode, Msg: err.Error(), Data: nil})
-		return
-	}
-
-	// 根据格式选项处理歌曲列表
-	formatSongList(songList, format)
-
-	// 根据顺序选项处理歌曲列表
-	processSongOrder(songList, order)
-
-	c.JSON(consts.StatusOK, &models.Result{Code: models.SuccessCode, Msg: SUCCESS, Data: songList})
 }
 
 // handleQiShuiMusic 处理汽水音乐歌单
 func handleQiShuiMusic(c *app.RequestContext, link string, detailed bool, format, order string) {
 	songList, err := logic.QiShuiMusicDiscover(link, detailed)
 	if err != nil {
-		log.Errorf("获取汽水音乐歌单失败: %v", err)
+		slog.Error("获取汽水音乐歌单失败", "err", err)
 		c.JSON(consts.StatusBadRequest, &models.Result{Code: models.FailureCode, Msg: err.Error(), Data: nil})
 		return
 	}

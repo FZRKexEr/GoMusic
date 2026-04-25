@@ -6,11 +6,6 @@ const (
 )
 
 const (
-	POST        = "POST"
-	ContentType = "Content-Type"
-)
-
-const (
 	SuccessCode = 1
 	FailureCode = -1
 )
