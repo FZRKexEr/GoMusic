@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GoMusic</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace" aria-label="歌单解析">
+        <header class="topbar">
+          <div class="brand" aria-label="GoMusic">
+            <span class="brand-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M9 17.4a3 3 0 1 1-1.2-2.4V5.8c0-.5.3-.9.8-1l9-2.2c.8-.2 1.4.4 1.4 1.1v10.6a3 3 0 1 1-1.2-2.4V6.7l-7.6 1.9v8.8H10Z" />
+              </svg>
+            </span>
+            <span>GoMusic</span>
+          </div>
+          <div class="status" id="statusText">就绪</div>
+        </header>
+
+        <div class="tool-grid">
+          <form class="input-panel" id="parseForm">
+            <label class="field-label" for="shareInput">分享内容</label>
+            <textarea
+              id="shareInput"
+              name="url"
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="歌单｜测试歌单 https://qishui.douyin.com/s/testToken/ @汽水音乐"
+            ></textarea>
+
+            <div class="controls" aria-label="解析选项">
+              <div class="control-group">
+                <span class="control-label">歌名</span>
+                <label class="segmented-option">
+                  <input type="radio" name="detailed" value="false" checked />
+                  <span>标准</span>
+                </label>
+                <label class="segmented-option">
+                  <input type="radio" name="detailed" value="true" />
+                  <span>原始</span>
+                </label>
+              </div>
+
+              <div class="control-group">
+                <span class="control-label">格式</span>
+                <label class="segmented-option">
+                  <input type="radio" name="format" value="song-singer" checked />
+                  <span>歌名-歌手</span>
+                </label>
+                <label class="segmented-option">
+                  <input type="radio" name="format" value="singer-song" />
+                  <span>歌手-歌名</span>
+                </label>
+                <label class="segmented-option">
+                  <input type="radio" name="format" value="song" />
+                  <span>仅歌名</span>
+                </label>
+              </div>
+
+              <label class="toggle-row">
+                <input type="checkbox" id="reverseOrder" />
+                <span>倒序</span>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button class="primary-action" id="parseButton" type="submit">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h12.2l-4.6-4.6L14 6l7 7-7 7-1.4-1.4 4.6-4.6H5v-2Z" />
+                </svg>
+                <span>解析歌单</span>
+              </button>
+              <button class="ghost-action" id="clearButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 7h10v2H7V7Zm2 4h6v2H9v-2Zm-2 4h10v2H7v-2Z" />
+                </svg>
+                <span>清空</span>
+              </button>
+            </div>
+          </form>
+
+          <section class="result-panel" aria-live="polite">
+            <div class="result-header">
+              <div>
+                <p class="eyebrow">解析结果</p>
+                <h1 id="playlistName">等待输入</h1>
+              </div>
+              <span class="count-pill" id="songCount">0 首</span>
+            </div>
+
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-7-7V3Zm1 1v9h8v-2h-6V4h-2Z" />
+                </svg>
+              </div>
+              <p>暂无结果</p>
+            </div>
+
+            <div class="result-toolbar" id="resultToolbar" hidden>
+              <button class="mini-action" id="copySongsButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 7h10v13H8V7Zm2 2v9h6V9h-6ZM5 4h10v2H7v10H5V4Z" />
+                </svg>
+                <span>复制歌曲</span>
+              </button>
+              <button class="mini-action" id="copyJsonButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8.7 16.3 4.4 12l4.3-4.3 1.4 1.4L7.2 12l2.9 2.9-1.4 1.4Zm6.6 0-1.4-1.4 2.9-2.9-2.9-2.9 1.4-1.4 4.3 4.3-4.3 4.3Z" />
+                </svg>
+                <span>复制 JSON</span>
+              </button>
+            </div>
+
+            <ol class="song-list" id="songList"></ol>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
