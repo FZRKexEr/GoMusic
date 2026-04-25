@@ -3,24 +3,28 @@ package httputil
 import (
 	"log/slog"
 	"net/http"
+	"time"
 )
 
-// not allow redirect client
+const (
+	defaultTimeout   = 10 * time.Second
+	defaultUserAgent = "Mozilla/5.0"
+)
+
 var client *http.Client
 
-// allow redirect client
 var clientNoRedirect *http.Client
 
 func init() {
-	client = &http.Client{}
+	client = &http.Client{Timeout: defaultTimeout}
 	clientNoRedirect = &http.Client{
+		Timeout: defaultTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse // return this error to prevent redirect
+			return http.ErrUseLastResponse
 		},
 	}
 }
 
-// GetRedirectLocation ...
 func GetRedirectLocation(link string) (string, error) {
 	req, err := newGetRequest(link)
 	if err != nil {
@@ -49,6 +53,6 @@ func newGetRequest(link string) (*http.Request, error) {
 		slog.Error("http NewRequest error", "err", err)
 		return nil, err
 	}
-	req.Header.Set("User-Agent", "Mozilla/5.0")
+	req.Header.Set("User-Agent", defaultUserAgent)
 	return req, nil
 }

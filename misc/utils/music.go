@@ -2,11 +2,12 @@ package utils
 
 import (
 	"regexp"
+	"strings"
 )
 
 const (
-	bracketsPattern = `（|）`     // 去除特殊符号
-	miscPattern     = `\s?【.*】` // 去除特殊符号
+	bracketsPattern = `（|）`
+	miscPattern     = `\s?【[^】]*】`
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 
 // StandardSongName 获取标准化歌名
 func StandardSongName(songName string) string {
-	return miscRegex.ReplaceAllString(replaceCNBrackets(songName), "")
+	return strings.TrimSpace(miscRegex.ReplaceAllString(replaceCNBrackets(songName), ""))
 }
 
 // 将中文括号替换为英文括号

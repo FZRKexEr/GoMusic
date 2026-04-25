@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,35 +12,53 @@ import (
 
 	"GoMusic/misc/httputil"
 	"GoMusic/misc/models"
-	"GoMusic/misc/utils"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 // 歌曲链接正则
 const (
-	qishuiMusicURL = `https?://[^\s"'<>，。；;、)]+`
-	playlistIDKey  = "playlist_id"
+	qishuiMusicURL       = `https?://[^\s"'<>，。；;、)]+`
+	playlistIDKey        = "playlist_id"
+	routerDataAssignment = "_ROUTER_DATA = "
+	qishuiShareHost      = "qishui.douyin.com"
+	qishuiMusicHost      = "music.douyin.com"
+	qishuiMusicPath      = "/qishui/"
 )
 
 var (
 	qishuiMusicURLRegx = regexp.MustCompile(qishuiMusicURL)
 )
 
-// 歌曲信息列表#root > div > div > div > div > div:nth-child(2) > div > div > div > div > div 下的子元素nth-child
-// 歌曲名称 div:nth-child(2) > div:nth-child(1) > p
-// 歌曲作者 div:nth-child(2) > div:nth-child(2) > p
+type qishuiHTTPClient interface {
+	Get(link string) (*http.Response, error)
+	GetRedirectLocation(link string) (string, error)
+}
+
+type defaultQishuiHTTPClient struct{}
 
 // QiShuiMusicDiscover 解析歌单
 // link: 歌单链接
 // detailed: 是否使用详细歌曲名（原始歌曲名，不去除括号等内容）
 func QiShuiMusicDiscover(link string, detailed bool) (*models.SongList, error) {
-	playlistURL, err := resolveQiShuiURL(link)
+	return discoverQiShuiMusic(link, detailed, defaultQishuiHTTPClient{})
+}
+
+func (defaultQishuiHTTPClient) Get(link string) (*http.Response, error) {
+	return httputil.Get(link)
+}
+
+func (defaultQishuiHTTPClient) GetRedirectLocation(link string) (string, error) {
+	return httputil.GetRedirectLocation(link)
+}
+
+func discoverQiShuiMusic(link string, detailed bool, client qishuiHTTPClient) (*models.SongList, error) {
+	playlistURL, err := resolveQiShuiURL(link, client)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := httputil.Get(playlistURL)
+	resp, err := client.Get(playlistURL)
 	if err != nil {
 		return nil, err
 	}
@@ -55,24 +74,55 @@ func QiShuiMusicDiscover(link string, detailed bool) (*models.SongList, error) {
 	return songList, nil
 }
 
-func resolveQiShuiURL(link string) (string, error) {
+func IsQiShuiMusicLink(link string) bool {
+	return isQiShuiURL(extractURL(link))
+}
+
+func resolveQiShuiURL(link string, client qishuiHTTPClient) (string, error) {
 	extractedLink := extractURL(link)
 	if extractedLink == "" {
 		return "", errors.New("无效的汽水音乐链接")
+	}
+	if !isQiShuiURL(extractedLink) {
+		return "", errors.New("不支持的汽水音乐链接")
 	}
 
 	if hasPlaylistID(extractedLink) {
 		return extractedLink, nil
 	}
 
-	redirectedLink, err := httputil.GetRedirectLocation(extractedLink)
+	redirectedLink, err := client.GetRedirectLocation(extractedLink)
 	if err != nil {
 		return "", err
 	}
 	if redirectedLink == "" {
 		return extractedLink, nil
 	}
-	return resolveRedirectURL(extractedLink, redirectedLink)
+	resolvedURL, err := resolveRedirectURL(extractedLink, redirectedLink)
+	if err != nil {
+		return "", err
+	}
+	if !isQiShuiURL(resolvedURL) {
+		return "", errors.New("不支持的汽水音乐链接")
+	}
+	return resolvedURL, nil
+}
+
+func isQiShuiURL(rawURL string) bool {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	host := strings.ToLower(parsedURL.Hostname())
+	switch host {
+	case qishuiShareHost:
+		return true
+	case qishuiMusicHost:
+		return strings.HasPrefix(parsedURL.EscapedPath(), qishuiMusicPath)
+	default:
+		return false
+	}
 }
 
 func extractURL(text string) string {
@@ -108,47 +158,21 @@ func hasPlaylistID(rawURL string) bool {
 // parseQsSongList 解析网页
 // detailed: 是否使用详细歌曲名（原始歌曲名，不去除括号等内容）
 func parseQsSongList(body io.Reader, detailed bool) (*models.SongList, error) {
-	docDetail, err := goquery.NewDocumentFromReader(body)
+	html, err := io.ReadAll(body)
 	if err != nil {
 		return nil, err
 	}
-	songListName := strings.TrimSpace(docDetail.Find("#root > div > div > div > div > div:nth-child(1) > div:nth-child(3) > h1 > p").Text())
-	songListAuthor := strings.TrimSpace(docDetail.Find("#root > div > div > div > div > div:nth-child(1) > div:nth-child(3) > div > div > div:nth-child(2) > p").Text())
-	songList := models.SongList{
-		Name:       formatPlaylistName(songListName, songListAuthor),
-		SongsCount: 0,
+
+	if songList, ok := parseRouterDataSongList(html, detailed); ok {
+		return songList, nil
 	}
-	docDetail.Find("#root > div > div > div > div > div:nth-child(2) > div > div > div > div > div").Each(
-		func(i int, s *goquery.Selection) {
-			title := strings.TrimSpace(s.Find("div:nth-child(2) > div:nth-child(1) > p").Text())
-			artist := strings.TrimSpace(s.Find("div:nth-child(2) > div:nth-child(2) > p").Text())
-			if title == "" {
-				return
-			}
 
-			// artist 需要格式化，去除 • 后面的字符，例如：G.E.M. 邓紫棋 • T.I.M.E. -> G.E.M. 邓紫棋
-			artist = strings.TrimSpace(strings.Split(artist, "•")[0])
-
-			// 根据detailed参数决定是否使用原始歌曲名
-			var songName string
-			if detailed {
-				songName = title // 使用原始歌曲名
-			} else {
-				songName = utils.StandardSongName(title) // 使用标准化的歌曲名
-			}
-
-			formattedSong := formatSong(songName, artist)
-			if formattedSong == "" {
-				return
-			}
-			songList.Songs = append(songList.Songs, formattedSong)
-			songList.SongsCount++
-		},
-	)
-	if songList.SongsCount == 0 {
-		return nil, errors.New("未解析到汽水音乐歌曲")
+	docDetail, err := goquery.NewDocumentFromReader(bytes.NewReader(html))
+	if err != nil {
+		return nil, err
 	}
-	return &songList, nil
+
+	return parseDOMSongList(docDetail, detailed)
 }
 
 func formatPlaylistName(name, author string) string {

@@ -6,8 +6,10 @@ toolchain go1.23.4
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.0
+	github.com/bytedance/mockey v1.4.6
 	github.com/cloudwego/hertz v0.10.4
 	github.com/hertz-contrib/cors v0.1.0
+	github.com/smartystreets/goconvey v1.8.1
 )
 
 require (
@@ -20,14 +22,17 @@ require (
 	github.com/cloudwego/netpoll v0.7.2 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/tidwall/gjson v1.14.4 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	golang.org/x/arch v0.3.0 // indirect
+	golang.org/x/arch v0.11.0 // indirect
 	golang.org/x/net v0.29.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/sys v0.26.0 // indirect
 	google.golang.org/protobuf v1.34.1 // indirect
 )
