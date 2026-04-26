@@ -5,11 +5,12 @@ GoMusic 是一个轻量的歌单解析服务。当前 fork 版本已经精简为
 ## 当前能力
 
 - 提供一个简洁静态前端，用于粘贴分享内容、选择格式并查看解析结果。
+- 静态前端通过 `go:embed` 打进可执行文件，部署时不依赖外部 `static` 目录。
 - 解析汽水音乐短分享链接和 `music.douyin.com/qishui/...` 歌单页链接。
 - 支持从分享文案中自动提取 URL。
 - 优先读取页面 SSR 注入的 `_ROUTER_DATA`，拿到更稳定的歌单标题、作者、曲目和视频条目信息。
 - 当 SSR 数据不可用时，回退到 DOM 解析。
-- 支持返回原始歌名或标准化歌名。
+- 支持清理歌名中的 `【标签】`，也可以保留页面原始歌名。
 - 支持输出顺序和基础格式转换。
 
 ## 不再支持的内容
@@ -19,7 +20,7 @@ GoMusic 是一个轻量的歌单解析服务。当前 fork 版本已经精简为
 - 删除网易云音乐解析。
 - 删除 QQ 音乐解析、签名、加密脚本和相关模型。
 - 删除 DB/Redis 依赖，服务现在是无状态的，不需要持久化。
-- 删除旧前端和静态资源路由，后续前端会重新设计。
+- 删除旧前端，改为内嵌的轻量静态前端。
 
 ## API
 
@@ -35,7 +36,30 @@ go run .
 :8081
 ```
 
-解析歌单：
+解析歌单，推荐使用 JSON 请求：
+
+```http
+POST /songlist
+Content-Type: application/json
+
+{
+  "url": "<汽水音乐分享文案或歌单链接>",
+  "clean": true,
+  "format": "song-singer",
+  "reverse": false
+}
+```
+
+请求字段：
+
+- `url`：汽水音乐分享文案、短链接或 `music.douyin.com/qishui/...` 歌单页链接。
+- `clean=true`：清理歌名中的 `【标签】`，并统一中文括号；传 `false` 时保留页面原始歌名。
+- `format=song-singer`：默认格式，返回 `歌名 - 歌手`。
+- `format=singer-song`：返回 `歌手 - 歌名`。
+- `format=song`：只返回歌名。
+- `reverse=true`：倒序返回。
+
+仍兼容旧的表单请求：
 
 ```http
 POST /songlist
@@ -44,7 +68,7 @@ Content-Type: application/x-www-form-urlencoded
 url=<汽水音乐分享文案或歌单链接>
 ```
 
-查询参数：
+旧查询参数：
 
 - `detailed=true`：保留页面里的原始歌名；不传时会做基础标准化。
 - `format=song-singer`：默认格式，返回 `歌名 - 歌手`。
@@ -88,11 +112,12 @@ url=<汽水音乐分享文案或歌单链接>
 - 移除网易云音乐支持。
 - 移除 QQ 音乐支持，包括 JS/native sign、加密逻辑、请求模型和测试。
 - 移除自实现 `misc/log`，改用 Go 标准库 `log/slog`。
-- 移除旧 Vue 前端和静态文件服务。
+- 移除旧 Vue 前端，新增无构建链静态前端，并通过 `go:embed` 内嵌进服务。
 - 汽水音乐解析改为“SSR JSON 优先，DOM fallback”的结构。
+- `/songlist` 支持 JSON 请求，同时保留旧表单请求兼容。
 - HTTP 工具统一设置 User-Agent 和请求超时。
 - 返回码改为语义化的 `ResultCodeOK = 0`、`ResultCodeBadRequest = 400`。
-- 补充 PatchConvey 风格单元测试，所有外部依赖都用 mock/fake 数据，不依赖真实用户链接。
+- 补充 PatchConvey 风格单元测试，所有外部依赖都用 mock/fake 数据，不依赖真实用户链接，当前总覆盖率保持在 90% 以上。
 
 ## 开发
 
@@ -105,7 +130,8 @@ go test ./...
 查看覆盖率：
 
 ```bash
-go test ./... -cover
+go test ./... -coverprofile=coverage.out
+go tool cover -func=coverage.out
 ```
 
 项目当前没有持久化组件；核心代码集中在：
@@ -115,4 +141,4 @@ go test ./... -cover
 - `misc/httputil/`：HTTP 请求工具。
 - `misc/models/`：响应结构和歌单模型。
 - `misc/utils/`：歌名标准化工具。
-- `static/`：无构建链的静态前端。
+- `static/`：无构建链的静态前端和嵌入资源。

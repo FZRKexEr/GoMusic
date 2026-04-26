@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
 	"slices"
 	"strings"
@@ -30,24 +32,83 @@ var (
 	discoverQiShuiMusic = logic.QiShuiMusicDiscover
 )
 
+type songListRequest struct {
+	Link   string
+	Clean  bool
+	Format string
+	Order  string
+}
+
+type songListJSONRequest struct {
+	URL      string `json:"url"`
+	Format   string `json:"format"`
+	Clean    *bool  `json:"clean"`
+	Detailed *bool  `json:"detailed"`
+	Reverse  bool   `json:"reverse"`
+	Order    string `json:"order"`
+}
+
 // MusicHandler 处理音乐请求的入口函数
 func MusicHandler(_ context.Context, c *app.RequestContext) {
-	link := c.PostForm("url")
-	detailed := c.Query("detailed") == "true"
-	format := c.Query("format")
-	order := c.Query("order")
+	request, err := parseSongListRequest(c)
+	if err != nil {
+		c.JSON(consts.StatusBadRequest, models.BadRequest(err.Error()))
+		return
+	}
+
+	detailed := !request.Clean
 	currentCount := counter.Add(1)
 
-	slog.Info("歌单请求", "count", currentCount, "link", link, "detailed", detailed, "format", format, "order", order)
+	slog.Info("歌单请求", "count", currentCount, "link", request.Link, "clean", request.Clean, "format", request.Format, "order", request.Order)
 
 	// 路由到不同的音乐服务处理函数
 	switch {
-	case logic.IsQiShuiMusicLink(link):
-		handleQiShuiMusic(c, link, detailed, format, order)
+	case logic.IsQiShuiMusicLink(request.Link):
+		handleQiShuiMusic(c, request.Link, detailed, request.Format, request.Order)
 	default:
-		slog.Warn("不支持的音乐链接格式", "link", link)
+		slog.Warn("不支持的音乐链接格式", "link", request.Link)
 		c.JSON(consts.StatusBadRequest, models.BadRequest(unsupportedLinkMessage))
 	}
+}
+
+func parseSongListRequest(c *app.RequestContext) (songListRequest, error) {
+	if strings.Contains(string(c.Request.Header.ContentType()), "application/json") {
+		return parseSongListJSONRequest(c.Request.Body())
+	}
+
+	return songListRequest{
+		Link:   strings.TrimSpace(c.PostForm("url")),
+		Clean:  c.Query("detailed") != "true",
+		Format: c.Query("format"),
+		Order:  c.Query("order"),
+	}, nil
+}
+
+func parseSongListJSONRequest(body []byte) (songListRequest, error) {
+	var payload songListJSONRequest
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return songListRequest{}, errors.New("请求 JSON 格式错误")
+	}
+
+	clean := true
+	if payload.Detailed != nil {
+		clean = !*payload.Detailed
+	}
+	if payload.Clean != nil {
+		clean = *payload.Clean
+	}
+
+	order := payload.Order
+	if payload.Reverse {
+		order = orderReverse
+	}
+
+	return songListRequest{
+		Link:   strings.TrimSpace(payload.URL),
+		Clean:  clean,
+		Format: payload.Format,
+		Order:  order,
+	}, nil
 }
 
 // handleQiShuiMusic 处理汽水音乐歌单

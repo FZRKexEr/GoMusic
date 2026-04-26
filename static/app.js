@@ -11,6 +11,8 @@ const resultToolbar = document.querySelector("#resultToolbar");
 const songList = document.querySelector("#songList");
 const copySongsButton = document.querySelector("#copySongsButton");
 const copyJsonButton = document.querySelector("#copyJsonButton");
+const copyPanel = document.querySelector("#copyPanel");
+const copyBuffer = document.querySelector("#copyBuffer");
 
 let currentResult = null;
 
@@ -25,6 +27,7 @@ form.addEventListener("submit", async (event) => {
   }
 
   parseButton.disabled = true;
+  hideCopyPanel();
   setStatus("解析中");
 
   try {
@@ -48,37 +51,44 @@ form.addEventListener("submit", async (event) => {
 clearButton.addEventListener("click", () => {
   shareInput.value = "";
   currentResult = null;
+  hideCopyPanel();
   renderEmpty("暂无结果");
   setStatus("就绪");
   shareInput.focus();
 });
 
 copySongsButton.addEventListener("click", async () => {
-  if (!currentResult) return;
-  await copyText(currentResult.songs.join("\n"));
-  setStatus("已复制歌曲", "toast");
+  if (!currentResult) {
+    setStatus("暂无可复制内容", "error");
+    return;
+  }
+
+  await copyResultText(currentResult.songs.join("\n"), "已复制歌曲");
 });
 
 copyJsonButton.addEventListener("click", async () => {
-  if (!currentResult) return;
-  await copyText(JSON.stringify(currentResult, null, 2));
-  setStatus("已复制 JSON", "toast");
+  if (!currentResult) {
+    setStatus("暂无可复制内容", "error");
+    return;
+  }
+
+  await copyResultText(JSON.stringify(currentResult, null, 2), "已复制 JSON");
 });
 
 async function requestSongList(text) {
-  const detailed = form.elements.detailed.value;
+  const clean = form.elements.clean.value === "true";
   const format = form.elements.format.value;
-  const order = reverseOrder.checked ? "reverse" : "";
-  const params = new URLSearchParams({ detailed, format });
-  if (order) params.set("order", order);
-
-  const body = new URLSearchParams({ url: text });
-  const response = await fetch(`/songlist?${params.toString()}`, {
+  const response = await fetch("/songlist", {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
     },
-    body,
+    body: JSON.stringify({
+      url: text,
+      clean,
+      format,
+      reverse: reverseOrder.checked,
+    }),
   });
 
   const payload = await response.json().catch(() => ({
@@ -98,6 +108,8 @@ function renderResult(data) {
   playlistName.textContent = data.name || "未命名歌单";
   songCount.textContent = `${data.songs_count || songs.length} 首`;
   songList.innerHTML = "";
+  setCopyPanelText(songs.join("\n"));
+  setElementVisible(copyPanel, songs.length > 0);
 
   const fragment = document.createDocumentFragment();
   songs.forEach((song) => {
@@ -110,16 +122,19 @@ function renderResult(data) {
   });
   songList.append(fragment);
 
-  emptyState.hidden = songs.length > 0;
-  resultToolbar.hidden = songs.length === 0;
+  setElementVisible(emptyState, songs.length === 0);
+  setElementVisible(songList, songs.length > 0);
+  setElementVisible(resultToolbar, songs.length > 0);
 }
 
 function renderEmpty(message, title = "等待输入") {
   playlistName.textContent = title;
   songCount.textContent = "0 首";
   songList.innerHTML = "";
-  resultToolbar.hidden = true;
-  emptyState.hidden = false;
+  hideCopyPanel();
+  setElementVisible(songList, false);
+  setElementVisible(resultToolbar, false);
+  setElementVisible(emptyState, true);
   emptyState.querySelector("p").textContent = message;
 }
 
@@ -128,19 +143,88 @@ function setStatus(message, className = "") {
   statusText.className = `status ${className}`.trim();
 }
 
+function setElementVisible(element, visible) {
+  element.hidden = !visible;
+  element.style.display = visible ? "" : "none";
+  element.setAttribute("aria-hidden", visible ? "false" : "true");
+}
+
 async function copyText(text) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+  if (copyTextWithCommand(text)) return;
+  if (copyTextWithSelection(text)) return;
+
+  if (window.isSecureContext && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch (error) {
+      throw error;
+    }
   }
 
+  throw new Error("复制失败");
+}
+
+async function copyResultText(text, successMessage) {
+  setCopyPanelText(text);
+
+  try {
+    await copyText(text);
+    setStatus(successMessage, "toast");
+  } catch {
+    selectCopyPanel();
+    setStatus("内容已选中，可手动复制", "toast");
+  }
+}
+
+function setCopyPanelText(text) {
+  copyBuffer.value = text;
+}
+
+function selectCopyPanel() {
+  setElementVisible(copyPanel, true);
+  copyBuffer.focus();
+  copyBuffer.select();
+  copyBuffer.setSelectionRange(0, copyBuffer.value.length);
+}
+
+function hideCopyPanel() {
+  copyBuffer.value = "";
+  setElementVisible(copyPanel, false);
+}
+
+function copyTextWithCommand(text) {
+  let copied = false;
+  const onCopy = (event) => {
+    event.clipboardData.setData("text/plain", text);
+    event.preventDefault();
+    copied = true;
+  };
+
+  document.addEventListener("copy", onCopy);
+  try {
+    return document.execCommand("copy") && copied;
+  } finally {
+    document.removeEventListener("copy", onCopy);
+  }
+}
+
+function copyTextWithSelection(text) {
   const textarea = document.createElement("textarea");
   textarea.value = text;
   textarea.setAttribute("readonly", "");
   textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  textarea.style.left = "0";
+  textarea.style.width = "1px";
+  textarea.style.height = "1px";
   textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
   document.body.append(textarea);
+  textarea.focus();
   textarea.select();
-  document.execCommand("copy");
+  textarea.setSelectionRange(0, textarea.value.length);
+  const copied = document.execCommand("copy");
   textarea.remove();
+  return copied;
 }

@@ -18,6 +18,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -323,6 +327,19 @@ h1 {
 
 .result-toolbar {
   margin-bottom: 10px;
+}
+
+.copy-panel {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.copy-buffer {
+  min-height: 128px;
+  max-height: 260px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
 }
 
 .mini-action {

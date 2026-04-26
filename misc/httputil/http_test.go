@@ -1,6 +1,7 @@
 package httputil
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -49,6 +50,30 @@ func TestHTTPUtil(t *testing.T) {
 
 			So(resp, ShouldBeNil)
 			So(err, ShouldNotBeNil)
+
+			location, err := GetRedirectLocation("://bad-url")
+			So(location, ShouldBeEmpty)
+			So(err, ShouldNotBeNil)
+		})
+
+		PatchConvey("GetRedirectLocation propagates client errors", func() {
+			originalClient := clientNoRedirect
+			clientNoRedirect = &http.Client{Transport: errorTransport{}}
+			defer func() {
+				clientNoRedirect = originalClient
+			}()
+
+			location, err := GetRedirectLocation("https://example.com")
+
+			So(location, ShouldBeEmpty)
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldContainSubstring, "transport failed")
 		})
 	})
+}
+
+type errorTransport struct{}
+
+func (errorTransport) RoundTrip(*http.Request) (*http.Response, error) {
+	return nil, errors.New("transport failed")
 }

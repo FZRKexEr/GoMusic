@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GoMusic</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260426-5" />
   </head>
   <body>
     <main class="shell">
@@ -36,12 +36,12 @@
               <div class="control-group">
                 <span class="control-label">歌名</span>
                 <label class="segmented-option">
-                  <input type="radio" name="detailed" value="false" checked />
-                  <span>标准</span>
+                  <input type="radio" name="clean" value="true" checked />
+                  <span>清理【标签】</span>
                 </label>
                 <label class="segmented-option">
-                  <input type="radio" name="detailed" value="true" />
-                  <span>原始</span>
+                  <input type="radio" name="clean" value="false" />
+                  <span>保留原名</span>
                 </label>
               </div>
 
@@ -101,7 +101,7 @@
               <p>暂无结果</p>
             </div>
 
-            <div class="result-toolbar" id="resultToolbar" hidden>
+            <div class="result-toolbar" id="resultToolbar" hidden style="display: none">
               <button class="mini-action" id="copySongsButton" type="button">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M8 7h10v13H8V7Zm2 2v9h6V9h-6ZM5 4h10v2H7v10H5V4Z" />
@@ -116,12 +116,17 @@
               </button>
             </div>
 
-            <ol class="song-list" id="songList"></ol>
+            <div class="copy-panel" id="copyPanel" hidden style="display: none">
+              <label class="field-label" for="copyBuffer">复制内容</label>
+              <textarea class="copy-buffer" id="copyBuffer" readonly spellcheck="false"></textarea>
+            </div>
+
+            <ol class="song-list" id="songList" hidden style="display: none"></ol>
           </section>
         </div>
       </section>
     </main>
 
-    <script src="/app.js" defer></script>
+    <script src="/app.js?v=20260426-5" defer></script>
   </body>
 </html>

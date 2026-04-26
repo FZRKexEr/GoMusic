@@ -39,6 +39,38 @@ func TestMusicHandler(t *testing.T) {
 			So(result.Data.SongsCount, ShouldEqual, 2)
 		})
 
+		PatchConvey("accepts JSON requests with clean and reverse options", func() {
+			MockValue(&discoverQiShuiMusic).To(func(link string, detailed bool) (*models.SongList, error) {
+				So(link, ShouldEqual, "https://qishui.douyin.com/s/testToken/")
+				So(detailed, ShouldBeFalse)
+				return &models.SongList{
+					Name:       "JSON Playlist",
+					Songs:      []string{"Song A - Singer A", "Song B - Singer B"},
+					SongsCount: 2,
+				}, nil
+			})
+
+			statusCode, result := performJSONSongListRequest(`{
+				"url": "https://qishui.douyin.com/s/testToken/",
+				"clean": true,
+				"format": "song",
+				"reverse": true
+			}`)
+
+			So(statusCode, ShouldEqual, consts.StatusOK)
+			So(result.Code, ShouldEqual, models.ResultCodeOK)
+			So(result.Data.Name, ShouldEqual, "JSON Playlist")
+			So(result.Data.Songs, ShouldResemble, []string{"Song B", "Song A"})
+		})
+
+		PatchConvey("rejects invalid JSON requests", func() {
+			statusCode, result := performJSONSongListRequest(`{"url":`)
+
+			So(statusCode, ShouldEqual, consts.StatusBadRequest)
+			So(result.Code, ShouldEqual, models.ResultCodeBadRequest)
+			So(result.Msg, ShouldEqual, "请求 JSON 格式错误")
+		})
+
 		PatchConvey("rejects unsupported links before discovery", func() {
 			called := false
 			MockValue(&discoverQiShuiMusic).To(func(link string, detailed bool) (*models.SongList, error) {
@@ -120,6 +152,21 @@ func performSongListRequest(uri, body string) (int, songListHTTPResponse) {
 	ctx.Request.SetRequestURI(uri)
 	ctx.Request.Header.SetMethod(consts.MethodPost)
 	ctx.Request.Header.SetContentTypeBytes([]byte("application/x-www-form-urlencoded"))
+	ctx.Request.SetBodyString(body)
+
+	router.ServeHTTP(context.Background(), ctx)
+
+	var result songListHTTPResponse
+	_ = json.Unmarshal(ctx.Response.Body(), &result)
+	return ctx.Response.StatusCode(), result
+}
+
+func performJSONSongListRequest(body string) (int, songListHTTPResponse) {
+	router := NewRouter()
+	ctx := router.NewContext()
+	ctx.Request.SetRequestURI("/songlist")
+	ctx.Request.Header.SetMethod(consts.MethodPost)
+	ctx.Request.Header.SetContentTypeBytes([]byte("application/json"))
 	ctx.Request.SetBodyString(body)
 
 	router.ServeHTTP(context.Background(), ctx)

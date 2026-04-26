@@ -3,6 +3,11 @@ package main
 import "GoMusic/handler"
 
 func main() {
-	r := handler.NewRouter()
-	r.Spin()
+	newServer().Spin()
+}
+
+func newServer() interface {
+	Spin()
+} {
+	return handler.NewRouter()
 }

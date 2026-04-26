@@ -24,3 +24,9 @@ func TestStaticFrontend(t *testing.T) {
 		So(string(ctx.Response.Body()), ShouldContainSubstring, "<title>GoMusic</title>")
 	})
 }
+
+func TestNewServer(t *testing.T) {
+	PatchConvey("server construction", t, func() {
+		So(newServer(), ShouldNotBeNil)
+	})
+}
